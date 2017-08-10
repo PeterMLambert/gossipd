@@ -51,7 +51,7 @@ def export_peer(peer, filename, private=True):
 def _prnt(s):
 	print s
 	
-def loadpeers(directory, pf=print):
+def loadpeers(directory, pf=_prnt):
 	peers = []
 	for peer in os.listdir(directory):
 		try:
