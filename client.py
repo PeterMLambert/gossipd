@@ -29,12 +29,12 @@ class Listener(threading.Thread):
 		self.cont = True
 		self.master.printm("Loading receiving peer information ...")
 		self.peers = g.loadpeers(conf.RecvPeers, self.master.printm)
+		self.messages = []
 		
 	def run(self):
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
 		sock.bind(("", conf.port))
 		sock.settimeout(conf.sockettimeout)
-		messages = []
 		
 		while self.cont:
 			try:
@@ -43,8 +43,8 @@ class Listener(threading.Thread):
 				for peer in self.peers:
 					message = rsa.unpad(data, peer.A, peer.B).strip('\x00')
 					if cs(message[4:]) == message[:4]:
-						if message not in messages:
-							messages.append(message)
+						if message not in self.messages:
+							self.messages.append(message)
 							logfile = open('messagelog', 'a')
 							logfile.write(message[4:]+'\n')
 							logfile.close()
