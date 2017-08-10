@@ -17,7 +17,7 @@ import gossippeers as g
 import gossipconfig as conf
 
 MAXUDPSIZE = 512 # maximum size of UDP-gram
-MAXMESSAGE = MAXUDPSIZE / 2 - 17 - len(conf.nick) # leaving room for encryption, checksum of 4 bytes, time, and nick
+MAXMESSAGE = MAXUDPSIZE / 2 - 20 - len(conf.nick) # leaving room for encryption, checksum of 4 bytes, time, and nick
 
 def cs(s):
 	return rsa.n_to_s(crc32(s))
@@ -42,13 +42,13 @@ class Listener(threading.Thread):
 				# self.master.printm(rsa.hexify(data))
 				for peer in self.peers:
 					message = rsa.unpad(data, peer.A, peer.B).strip('\x00')
-					if cs(message) == message[:4]:
+					if cs(message[4:]) == message[:4]:
 						if message not in messages:
 							messages.append(message)
 							logfile = open('messagelog', 'a')
 							logfile.write(message[4:]+'\n')
 							logfile.close()
-							if message.split(' ')[1]!='PRIVMSG:':
+							if message.split(' ')[2]!='PM:':
 								self.master.relay.mq.put(message)
 							self.master.printm("%d %s: %s" % (int(time.time()), peer.nick, message[4:]))
 						break
@@ -142,8 +142,13 @@ class App(T.Frame):
 		
 	def user_input(self, event):
 		m = self.user_entry.get()
-		datedm = '%s%d %s: %s' % (cs(m), time.time(), conf.nick, m)
-		self.user_entry.set('')
+		if len(m) > MAXMESSAGE:
+			self.user_entry.put(m[MAXMESSAGE:])
+			m = m[:MAXMESSAGE]
+		else:
+			self.user_entry.set('')
+		datedm = '%d %s: %s' % (time.time(), conf.nick, m)
+		finalm = cs(datedm)+datedm
 		if m.startswith('/'):
 			self.printm(m)
 			if m.startswith('/q'): # quit
@@ -158,17 +163,19 @@ class App(T.Frame):
 						'/u : Update peers \n'
 						'/q : quit')
 			elif m.startswith('//'): # send a message starting with /
-				datedm = '%s%d %s: %s' % (cs(m), time.time(), conf.nick, m[1:])
-				self.listener.messages.append(datedm)
-				self.relay.mq.put(datedm)
+				datedm = '%d %s: %s' % (time.time(), conf.nick, m[1:])
+				finalm = cs(datedm)+datedm
+				self.listener.messages.append(finalm)
+				self.relay.mq.put(finalm)
 			elif m.startswith('/p'): # send a direct message
 				try:
 					topeer, m = m.split(' ', 2)[1:]
+					self.user_entry.set('/p %s %s' % (topeer, self.user_entry.get()))
 					for peer in self.relay.peers:
 						if topeer == peer.nick:
-							self.relay.sock.sendto(
-									rsa.padencrypt(peer.cs+conf.nick+' PRIVMSG: '+m, peer.A, peer.B), 
-									(peer.IP, peer.port))
+							datedm = '%d %s PM: %s' % (time.time(), conf.nick, m)
+							finalm = cs(datedm)+datedm
+							self.relay.sock.sendto(rsa.padencrypt(finalm, peer.A, peer.B), (peer.IP, peer.port))
 							break
 					else:
 						self.printm('Could not find peer %s' % (topeer))
@@ -206,8 +213,8 @@ class App(T.Frame):
 				self.printm("Unknown command: %s" % (m))
 		else:
 			self.printm(datedm)
-			self.listener.messages.append(datedm)
-			self.relay.mq.put(datedm)
+			self.listener.messages.append(finalm)
+			self.relay.mq.put(finalm)
 		
 	def printm(self, message):
 		self.textbox.insert('end', message+'\n')
