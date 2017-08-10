@@ -45,12 +45,13 @@ class Listener(threading.Thread):
 					if cs(message[4:]) == message[:4]:
 						if message not in self.messages:
 							self.messages.append(message)
+							tm = "%d %s: %s" % (int(time.time()), peer.nick, message[4:])
 							logfile = open('messagelog', 'a')
-							logfile.write(message[4:]+'\n')
+							logfile.write(tm+'\n')
 							logfile.close()
 							if message.split(' ')[2]!='PM:':
 								self.master.relay.mq.put(message)
-							self.master.printm("%d %s: %s" % (int(time.time()), peer.nick, message[4:]))
+							self.master.printm(tm)
 						break
 			except socket.timeout:
 				pass
