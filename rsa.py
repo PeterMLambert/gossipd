@@ -18,48 +18,20 @@ class Key(object):
 
 def padencrypt(m, keya, keyb):
 	'''Takes a string, splits it into chunks and xor's them with random bytes, then encrypts to two keys.
-	Returns an array of arrays holding the random string and the xor'ed result string.'''
+	Returns an array of arrays holding the random string and the xor'ed result string. 
+	Message should be smaller than the length of the key modulus.'''
 	padlen = min(keya.l, keyb.l) - 1 # make sure that the strings will not overflow the key mods
-	cutmessage = []
-	while len(m) > padlen:
-		cutmessage.append(m[:padlen])
-		m = m[padlen:]
-	if len(m) > 0:
-		cutmessage.append(m + '\x00'*(padlen-len(m)))
-	for k in range(len(cutmessage)):
-		r = urandom(len(cutmessage[k]))
-		cutmessage[k] = encrypt(r, keya) + encrypt(xor(r, cutmessage[k]), keyb)
-	return ''.join(cutmessage)
+	m += '\x00'*(padlen-len(m))
+	r = urandom(len(m))
+	return encrypt(r, keya) + encrypt(xor(r, m), keyb)
 	
-def unpack(pm, keya, keyb):
-	'''Takes a string (the result of padding, encrypting, and joining) and breaks it into pieces ready for decrypting.
-	Returns an array of arrays holding the encrypted random string and xor'ed message.'''
-	res = []
-	seclen = keya.l+keyb.l
-	while len(pm) > 0:
-		res.append([pm[:keya.l], pm[keya.l:seclen]])
-		pm = pm[seclen:]
-	return res
-
 def unpad(xorpair, keya, keyb):	
 	padlen = min(keya.l, keyb.l) - 1
 	return xor(decrypt(xorpair[0], keya, padlen), decrypt(xorpair[1], keyb, padlen))
 
-def fermat_test(n):
-	''' Use the fermat test to check if n is prime. '''
-	primes = [2, 3, 5, 7, 11, 13]
-	if n in primes:
-		return True
-	for a in primes:
-		if n % a == 0:
-			return False
-		elif pow(a, n-1, n) != 1:
-			return False
-	return True
-
 small_primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31] # etc.
 
-def miller_rabin(n, strength=10):
+def miller_rabin(n, strength=20):
     """Return True if n passes strength rounds of the Miller-Rabin primality
     test (and is probably prime). Return False if n is proved to be
     composite.
@@ -178,7 +150,7 @@ if __name__=='__main__':
 		
 	try:
 		while True:
-			newkey = genkey(4096, 35567)
+			newkey = genkey(2048, 35567)
 			khash = mpfhf.hexify(mpfhf.mpfhf(format(newkey.n, 'b'), 64))
 			print '%s Found key with hash %s' % (asctime(), khash)
 			hpath = os.path.join(KeyDir, khash[0], khash[1])

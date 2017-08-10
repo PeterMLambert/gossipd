@@ -20,11 +20,6 @@ myIP = "10.20.50.77"			# should be this computer, use the showmyip.py script to 
 port = 13001					# port to listen to, must be between 1 and 65535
 nick = "PeterL"					# nick of the user
 
-cs_len = 32						# length of new challenge strings, must be between 1 and 511 
-# IMPORTANT NOTE: if the cs is too small, messages have a chance to get decrypted by the wrong key 
-# and your messages will be turned to garbage which will get forwarded on to all your peers and 
-# everybody will hate you. So don't go too small.
-
 showbuttons = True
 sockettimeout = 4
 
@@ -35,7 +30,6 @@ PINGINTERVAL = 500.0 	# (seconds: float) -- seconds to wait before sending pings
 PONG = True 			# (True/False) -- wether to respond to pings
 HISTORY = 60.0 			# (seconds: float) -- maximum age of messages to respond with when update requested
 GENKEYS = True 			# (True/False) -- wether to generate more keys
-NumCS = 1 				# number of challenge-strings to keep
 BogusPct = 0.1			# fraction of generated keys to mark as bogus
 SendQuitMessage	= False # wether to send a message when you leave
 QuitMessage = "%s has quit." % (nick)		

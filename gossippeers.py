@@ -19,9 +19,8 @@ if not os.path.isfile(os.path.join(conf.GossipDir, 'available')):
 	open(os.path.join(conf.GossipDir, 'available'), 'a').close()
 
 class Peer(object):
-	def __init__(self, keyA, keyB, nick='', cs='', IP='127.0.0.1', port=13000):
+	def __init__(self, keyA, keyB, nick='', IP='127.0.0.1', port=13000):
 		self.nick = nick
-		self.cs = cs
 		self.IP = IP
 		self.port = port
 		self.A = keyA
@@ -34,11 +33,10 @@ def import_peer(filename):
 	tmp = map(int, f.readline().split(' '))
 	B = rsa.Key(tmp[0], tmp[1], tmp[2])
 	nick = f.readline().strip()
-	cs = rsa.unhexify(f.readline().strip())
 	IP = f.readline().strip()
 	port = int(f.readline().strip())
 	f.close()
-	return Peer(A, B, nick, cs, IP, port)
+	return Peer(A, B, nick, IP, port)
 	
 def export_peer(peer, filename, private=True):
 	f = open(filename, 'w')
@@ -46,7 +44,6 @@ def export_peer(peer, filename, private=True):
 			peer.A.e, peer.A.n, peer.A.d if private else 0,
 			peer.B.e, peer.B.n, peer.B.d if private else 0,
 			peer.nick,
-			rsa.hexify(peer.cs),
 			peer.IP,
 			peer.port))
 	f.close()
@@ -54,7 +51,7 @@ def export_peer(peer, filename, private=True):
 def _prnt(s):
 	print s
 	
-def loadpeers(directory, pf=_prnt):
+def loadpeers(directory, pf=print):
 	peers = []
 	for peer in os.listdir(directory):
 		try:
@@ -72,10 +69,10 @@ def addpeer(newpeernick):
 		f.seek(0)
 		f.writelines(avail)
 		f.truncate()
-		newpeer = Peer(keys[0], keys[1], newpeernick, os.urandom(conf.cs_len), conf.myIP, conf.port)
+		newpeer = Peer(keys[0], keys[1], newpeernick, conf.myIP, conf.port)
 		export_peer(newpeer, os.path.join(conf.RecvPeers, newpeernick))
 		pubkey = os.path.join(conf.GossipDir, conf.nick+'.'+newpeernick+'.pbk')
-		myinfo = Peer(keys[0], keys[1], conf.nick, newpeer.cs, conf.myIP, conf.port)
+		myinfo = Peer(keys[0], keys[1], conf.nick, conf.myIP, conf.port)
 		export_peer(myinfo, pubkey, private=False)
 		print 'Public key information written to %s\n transfer this file securely to %s.' % (pubkey, newpeernick)
 	else:

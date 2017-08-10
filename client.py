@@ -10,13 +10,17 @@
 import Tkinter as T
 import os, random, socket, threading, time
 from Queue import Queue
+from binascii import crc32
 
 import rsa
 import gossippeers as g
 import gossipconfig as conf
 
-MAXUDPSIZE = 65507 # maximum size of UDP-gram
-MAXMESSAGE = 32241 # leaving room for encryption and a cs of up to 512 bytes
+MAXUDPSIZE = 512 # maximum size of UDP-gram
+MAXMESSAGE = MAXUDPSIZE / 2 - 17 - len(conf.nick) # leaving room for encryption, checksum of 4 bytes, time, and nick
+
+def cs(s):
+	return rsa.n_to_s(crc32(s))
 
 class Listener(threading.Thread):
 	def __init__(self, master=None):
@@ -37,17 +41,16 @@ class Listener(threading.Thread):
 				data, addr = sock.recvfrom(MAXUDPSIZE) # buffer size
 				# self.master.printm(rsa.hexify(data))
 				for peer in self.peers:
-					tmpdata = rsa.unpack(data, peer.A, peer.B)
-					if rsa.unpad(tmpdata[0], peer.A, peer.B).startswith(peer.cs):
-						message = ''.join(rsa.unpad(k, peer.A, peer.B) for k in tmpdata)[len(peer.cs):].strip('\x00')
+					message = rsa.unpad(data, peer.A, peer.B).strip('\x00')
+					if cs(message) == message[:4]:
 						if message not in messages:
 							messages.append(message)
 							logfile = open('messagelog', 'a')
-							logfile.write(message+'\n')
+							logfile.write(message[4:]+'\n')
 							logfile.close()
 							if message.split(' ')[1]!='PRIVMSG:':
-								self.master.relay.messagequeue.put(message)
-							self.master.printm("%d %s: %s" % (int(time.time()), peer.nick, message))
+								self.master.relay.mq.put(message)
+							self.master.printm("%d %s: %s" % (int(time.time()), peer.nick, message[4:]))
 						break
 			except socket.timeout:
 				pass
@@ -62,7 +65,7 @@ class Relay(threading.Thread):
 	def __init__(self, master=None):
 		threading.Thread.__init__(self)
 		self.cont = True
-		self.messagequeue = Queue()
+		self.mq = Queue()
 		self.newpeer = False
 		self.master = master
 		self.master.printm("Loading sending peer information ...")
@@ -70,10 +73,10 @@ class Relay(threading.Thread):
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
 	def run(self):
 		while self.cont:
-			m = self.messagequeue.get()
+			m = self.mq.get()
 			if m:
 				for peer in self.peers:
-					self.sock.sendto(rsa.padencrypt(peer.cs+m, peer.A, peer.B), (peer.IP, peer.port))	
+					self.sock.sendto(rsa.padencrypt(m, peer.A, peer.B), (peer.IP, peer.port))	
 			if self.newpeer:
 				filename = os.path.join(conf.SendPeers, self.newpeer+'.'+conf.nick+'.pbk')
 				if os.path.isfile(filename):
@@ -99,7 +102,7 @@ class App(T.Frame):
 		self.printm('Exiting ...')
 		self.listener.cont = False
 		self.relay.cont = False
-		self.relay.messagequeue.put('')
+		self.relay.mq.put('')
 		self.listener.join()
 		self.relay.join()
 		T.Frame.quit(self)
@@ -139,7 +142,7 @@ class App(T.Frame):
 		
 	def user_input(self, event):
 		m = self.user_entry.get()
-		datedm = '%d %s: %s' % (time.time(), conf.nick, m)
+		datedm = '%s%d %s: %s' % (cs(m), time.time(), conf.nick, m)
 		self.user_entry.set('')
 		if m.startswith('/'):
 			self.printm(m)
@@ -155,9 +158,9 @@ class App(T.Frame):
 						'/u : Update peers \n'
 						'/q : quit')
 			elif m.startswith('//'): # send a message starting with /
-				datedm = '%d %s: %s' % (time.time(), conf.nick, m[1:])
+				datedm = '%s%d %s: %s' % (cs(m), time.time(), conf.nick, m[1:])
 				self.listener.messages.append(datedm)
-				self.relay.messagequeue.put(datedm)
+				self.relay.mq.put(datedm)
 			elif m.startswith('/p'): # send a direct message
 				try:
 					topeer, m = m.split(' ', 2)[1:]
@@ -181,10 +184,10 @@ class App(T.Frame):
 				f.truncate()
 				f.close()
 				
-				newpeer = g.Peer(keys[0], keys[1], newpeernick, os.urandom(conf.cs_len), conf.myIP, conf.port)
+				newpeer = g.Peer(keys[0], keys[1], newpeernick, conf.myIP, conf.port)
 				g.export_peer(newpeer, os.path.join(conf.RecvPeers, newpeernick))
 				
-				myinfo = g.Peer(keys[0], keys[1], conf.nick, newpeer.cs, conf.myIP, conf.port)
+				myinfo = g.Peer(keys[0], keys[1], conf.nick, conf.myIP, conf.port)
 				pubkey = os.path.join(conf.GossipDir, conf.nick+'.'+newpeernick+'.pbk')
 				g.export_peer(myinfo, pubkey, private=False)
 				self.printm('Public key information written to %s, transfer this file securely to %s.' % 
@@ -204,7 +207,7 @@ class App(T.Frame):
 		else:
 			self.printm(datedm)
 			self.listener.messages.append(datedm)
-			self.relay.messagequeue.put(datedm)
+			self.relay.mq.put(datedm)
 		
 	def printm(self, message):
 		self.textbox.insert('end', message+'\n')
