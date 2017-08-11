@@ -20,7 +20,6 @@ README.txt      - This file
 gossippeers.py  - peer class and functions
 rsa.py          - functions for RSA encryption, and key generation
 mpfhf.py        - a python implementation of the MP fabulous hash function
-showmyip.py     - a script to check ip address
 gossipconfig.py - configuration settings for gossipd
 client.py		- GUI client for the gossipd protocol
 
@@ -62,6 +61,9 @@ quit:
 send a private message:
 /p NICK MESSAGE
 
+add a bogus peer:
+/b 
+
 Update the peer data (reloads all peer files):
 /u 
 
@@ -72,6 +74,6 @@ If you add a peer with the nick of a key that is already being used, the old key
 
 If you switch IP addresses, peers should still receive messages from you but you will not get any replies. So send a message with your updated IP address. The program does not have an automated way to update the IP address for peers (this might be added in the future). You can manually edit the pubkey file in your RecvPeers directory, the IP address is the second line from the bottom.
 
-The program will count the available keys when it starts. Two keys are used each time you add a peer. Run the rsa.py script to generate more keys.
+The program will count the available keys when it starts. Two keys are used each time you add a peer. Four keys are used every time you add a bogus peer. Run the rsa.py script to generate more keys.
 
 This program is written to be used with python 2.7. If you are using python 3 you are doing it wrong and I will not help you if anything bad happens.

@@ -16,7 +16,7 @@ import rsa
 import gossippeers as g
 import gossipconfig as conf
 
-MAXUDPSIZE = 512 # maximum size of UDP-gram
+MAXUDPSIZE = 512 # maximum size of unfragmented UDP-gram
 MAXMESSAGE = MAXUDPSIZE / 2 - 20 - len(conf.nick) # leaving room for encryption, checksum of 4 bytes, time, and nick
 
 def cs(s):
@@ -39,7 +39,6 @@ class Listener(threading.Thread):
 		while self.cont:
 			try:
 				data, addr = sock.recvfrom(MAXUDPSIZE) # buffer size
-				# self.master.printm(rsa.hexify(data))
 				for peer in self.peers:
 					message = rsa.unpad(data, peer.A, peer.B).strip('\x00')
 					if cs(message[4:]) == message[:4]:
@@ -165,6 +164,7 @@ class App(T.Frame):
 						'/i NICK : import pubkey for NICK \n'
 						'/p NICK MESSAGE : send a private message to NICK \n'
 						'/u : Update peers \n'
+						'/b : add a bogus peer \n'
 						'/q : quit')
 			elif m.startswith('//'): # send a message starting with /
 				datedm = '%d %s: %s' % (time.time(), conf.nick, m[1:])
