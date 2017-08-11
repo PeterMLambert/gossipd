@@ -40,7 +40,7 @@ def import_peer(filename):
 	
 def export_peer(peer, filename, private=True):
 	f = open(filename, 'w')
-	f.write('%d %d %d\n%d %d %d\n%s\n%s\n%s\n%s\n' % (
+	f.write('%d %d %d\n%d %d %d\n%s\n%s\n%s\n' % (
 			peer.A.e, peer.A.n, peer.A.d if private else 0,
 			peer.B.e, peer.B.n, peer.B.d if private else 0,
 			peer.nick,
