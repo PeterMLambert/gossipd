@@ -17,7 +17,7 @@ import gossippeers as g
 import gossipconfig as conf
 
 MAXUDPSIZE = 512 # maximum size of unfragmented UDP-gram
-MAXMESSAGE = MAXUDPSIZE / 2 - 20 - len(conf.nick) # leaving room for encryption, checksum of 4 bytes, time, and nick
+MAXMESSAGE = MAXUDPSIZE / 2 - 18 - len(conf.nick) # leaving room for encryption, checksum of 4 bytes, time, and nick
 
 def cs(s):
 	return rsa.n_to_s(crc32(s))
@@ -44,7 +44,7 @@ class Listener(threading.Thread):
 					if cs(message[4:]) == message[:4]:
 						if message not in self.messages:
 							self.messages.append(message)
-							tm = "%d %s: %s" % (int(time.time()), peer.nick, message[4:])
+							tm = "%x %s: %s" % (int(time.time()), peer.nick, message[4:])
 							logfile = open('messagelog', 'a')
 							logfile.write(tm+'\n')
 							logfile.close()
@@ -150,7 +150,7 @@ class App(T.Frame):
 			m = m[:MAXMESSAGE]
 		else:
 			self.user_entry.set('')
-		datedm = '%d %s: %s' % (time.time(), conf.nick, m)
+		datedm = '%x %s: %s' % (time.time(), conf.nick, m)
 		finalm = cs(datedm)+datedm
 		if m.startswith('/'):
 			self.printm(m)
@@ -167,7 +167,7 @@ class App(T.Frame):
 						'/b : add a bogus peer \n'
 						'/q : quit')
 			elif m.startswith('//'): # send a message starting with /
-				datedm = '%d %s: %s' % (time.time(), conf.nick, m[1:])
+				datedm = '%x %s: %s' % (time.time(), conf.nick, m[1:])
 				finalm = cs(datedm)+datedm
 				self.listener.messages.append(finalm)
 				self.relay.mq.put(finalm)
@@ -177,7 +177,7 @@ class App(T.Frame):
 					self.user_entry.set('/p %s %s' % (topeer, self.user_entry.get()))
 					for peer in self.relay.peers:
 						if topeer == peer.nick:
-							datedm = '%d %s PM: %s' % (time.time(), conf.nick, m)
+							datedm = '%x %s PM: %s' % (time.time(), conf.nick, m)
 							finalm = cs(datedm)+datedm
 							self.relay.sock.sendto(rsa.padencrypt(finalm, peer.A, peer.B), (peer.IP, peer.port))
 							break
