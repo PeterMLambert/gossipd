@@ -8,6 +8,13 @@ COPYRIGHT INFORMATION:
 You do not have, nor can you ever acquire the right to use, copy or distribute this software. Should you use this software for any purpose, or copy and distribute it to anyone or in any manner, you are breaking the laws of whatever soi-disant jurisdiction, and you promise to continue doing so for the indefinite future.
 
 
+# TODO:
+
+Add data encryption to files (keys, messages, etc). The encryption scheme means that the data is secure while going over the wire, but everything is curretly stored as plain text, so if anybody accesses your computer then all the data will be compromised.
+
+Port everyhting into ada using fixed field arithmetic.
+
+
 DEPENDENCIES:
 
 Python 2.7
