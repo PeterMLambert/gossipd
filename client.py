@@ -113,6 +113,9 @@ class App(T.Frame):
 			self.bbox = T.Frame(self)
 			self.bbox.pack({'side': 'top'})
 			
+			self.ADDB = T.Button(self.bbox, text='Add Bogus Peer', command=self.add_bogus)
+			self.ADDB.pack({"side": "left"})
+			
 			self.UPDATE = T.Button(self.bbox, text='Update Peers', command=self.update_peers)
 			self.UPDATE.pack({"side": "left"})
 			
@@ -208,6 +211,8 @@ class App(T.Frame):
 					relay.peers.append(g.import_peer(filename))
 				else:
 					self.printm("Could not find file %s" % (filename))
+			elif m.startswith('/b'):
+				self.addbogus()
 			elif m.startswith('/u'):
 				self.update_peers()
 			else:
@@ -220,6 +225,10 @@ class App(T.Frame):
 	def printm(self, message):
 		self.textbox.insert('end', message+'\n')
 		self.textbox.see('end')
+		
+	def add_bogus(self):
+		g.addbogus(self.printm)
+		self.update_peers()
 		
 root = T.Tk()
 root.wm_title("GossipD")

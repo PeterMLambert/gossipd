@@ -60,15 +60,46 @@ def loadpeers(directory, pf=_prnt):
 			pf('Could not open file %s' % os.path.join(directory, peer))
 	pf("Loaded %d peers from %s." % (len(peers), directory))
 	return peers
+	
+def addbogus(pf=_prnt):
+	f = open(os.path.join(conf.GossipDir, 'available'), 'r+')
+	avail = f.readlines()
+	if len(avail) >= 4:
+		keys = [rsa.import_key(avail.pop(random.randint(0, len(avail)-1)).strip()) for _ in range(4)]
+		f.seek(0)
+		f.writelines(avail)
+		f.truncate()
+		f.close()
+	else:
+		f.close()
+		pf('Not enough keys available.')
+		return
+	current = loadpeers(conf.SendPeers, pf)
+	names = [p.nick.lower() for p in current]
+	while True:
+		newnick = ''.join(chr(random.randint(97, 122)) for _ in range(random.randint(3, 12)))
+		if newnick in names:
+			continue
+		sfile = os.path.join(conf.SendPeers, '%s.%s.pbk' % (newnick, conf.nick))
+		rfile = os.path.join(conf.RecvPeers, newnick)
+		if os.path.isfile(sfile) or os.path.isfile(rfile):
+			continue
+		ip = '%d.%d.%d.%d' % (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+		export_peer(Peer(keys[0], keys[1], newnick, ip, random.randint(10001, 63355)), sfile, private=False)
+		export_peer(Peer(keys[2], keys[3], newnick, conf.myIP, conf.port), rfile)
+		pf('Added bogus peer %s.' % (newnick))
+		break
+		
 
 def addpeer(newpeernick):
 	f = open(os.path.join(conf.GossipDir, 'available'), 'r+')
 	avail = f.readlines()
 	if len(avail) >= 2:
-		keys = [rsa.import_key(avail.pop(random.randint(0, len(avail)-1)).strip()) for k in [0, 1]]
+		keys = [rsa.import_key(avail.pop(random.randint(0, len(avail)-1)).strip()) for _ in range(2)]
 		f.seek(0)
 		f.writelines(avail)
 		f.truncate()
+		
 		newpeer = Peer(keys[0], keys[1], newpeernick, conf.myIP, conf.port)
 		export_peer(newpeer, os.path.join(conf.RecvPeers, newpeernick))
 		pubkey = os.path.join(conf.GossipDir, conf.nick+'.'+newpeernick+'.pbk')
